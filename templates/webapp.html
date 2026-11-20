@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="eng">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Codec Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        .codec-box { margin-bottom: 25px; background: #fafafa; padding: 15px; border: 1px solid #ddd; border-radius: 5px; width: fit-content; }
+        canvas { background: #fff; border: 1px solid #ccc; display: block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<h2>Convert audio into mp3, flac, ogg and wav</h2>
+<input type="file" id="audioFile" accept="audio/*">
+<button onclick="uploadAndConvert()">Convert</button>
+<p id="status"></p>
+
+<div id="resultsContainer"></div>
+
+<script>
+    async function uploadAndConvert() {
+        const fileInput = document.getElementById('audioFile');
+        const status = document.getElementById('status');
+        const resultsContainer = document.getElementById('resultsContainer');
+
+        resultsContainer.innerHTML = '';
+
+        if (fileInput.files.length === 0) {
+            alert('Input file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        status.textContent = 'Loading...';
+
+        try {
+            const response = await fetch('/convert', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Error');
+            }
+
+            status.textContent = 'Finished';
+
+
+            data.links.forEach(item => {
+                const box = document.createElement('div');
+                box.className = 'codec-box';
+
+                const title = document.createElement('h4');
+                title.style.margin = '0 0 10px 0';
+                title.textContent = `Format: .${item.format.toUpperCase()}`;
+                box.appendChild(title);
+
+                const a = document.createElement('a');
+                a.href = item.url;
+                a.textContent = `Download .${item.format.toUpperCase()}`;
+                a.download = `output.${item.format}`;
+                a.style.display = 'inline-block';
+                a.style.marginBottom = '10px';
+                box.appendChild(a);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 500;
+                canvas.height = 100;
+                box.appendChild(canvas);
+
+                resultsContainer.appendChild(box);
+
+
+                drawWaveform(canvas, item.waveform);
+            });
+
+        } catch (error) {
+            status.textContent = 'Error: ' + error.message;
+        }
+    }
+
+    function drawWaveform(canvas, waveformPoints) {
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeStyle = '#007BFF';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+
+        const sliceWidth = width / waveformPoints.length;
+        let x = 0;
+
+        for (let i = 0; i < waveformPoints.length; i++) {
+            const v = waveformPoints[i];
+            const y = (height / 2) + (v * (height / 2));
+
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+
+            x += sliceWidth;
+        }
+
+        ctx.stroke();
+    }
+</script>
+</body>
+</html>

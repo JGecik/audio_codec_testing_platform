@@ -1,5 +1,5 @@
 {
-  "name": "codec_platform_javascript",
+  "name": "codec_platform_python",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
