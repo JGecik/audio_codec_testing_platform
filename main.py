@@ -16,36 +16,53 @@ def index():
 UPLOAD_FOLDER = 'converted_files'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
 @app.route('/convert', methods=['POST'])
 def convert_audio():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file added'}), 400
+        return jsonify({'error': 'No file was uploaded'}), 400
 
     file = request.files['file']
+
+    filename = file.filename
+
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
     input_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(input_path)
 
     base_name = os.path.splitext(file.filename)[0]
 
+
+    selected_codecs = request.form.getlist('codecs')
+    if not selected_codecs:
+        selected_codecs = ['mp3', 'flac', 'ogg', 'wav', 'aac', 'wma']
+
+
+
     try:
 
-        audio_info = audio_data(input_path)
+        original_info = audio_data(input_path)
+        original_size_kb = round(os.path.getsize(input_path) / 1024, 2)
+
+
         download_links = convert_audio_file(
             input_path=input_path,
             output_folder=UPLOAD_FOLDER,
-            base_filename=base_name
+            base_filename=base_name,
+            selected_codecs=selected_codecs
         )
 
         return jsonify({
-            'links': download_links,
-            'waveform': audio_info['waveforms'],
-            'duration': audio_info['duration'],
-            'sample_rate': audio_info['sample_rate']
+            'original': {
+                'name': filename,
+                'size_kb': original_size_kb,
+                'duration': original_info['duration'],
+                'sample_rate': original_info['sample_rate']
+            },
+            'links': download_links
         })
 
-    except ffmpeg.Error as e:
-        error_msg = e.stderr.decode('utf-8') if e.stderr else str(e)
-        return jsonify({'error': f'Error during conversion: {error_msg}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

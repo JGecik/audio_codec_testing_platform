@@ -4,16 +4,36 @@
     <meta charset="UTF-8">
     <title>Audio Codec Tester</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
-        .codec-box { margin-bottom: 25px; background: #fafafa; padding: 15px; border: 1px solid #ddd; border-radius: 5px; width: fit-content; }
-        canvas { background: #fff; border: 1px solid #ccc; display: block; margin-top: 10px; }
+        body { font-family: Arial, sans-serif; margin: 30px; background: #f9f9f9; color: #333; }
+        .codec-box { margin-bottom: 25px; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: inline-block; margin-right: 20px; vertical-align: top;}
+        canvas { background: #fff; border: 1px solid #ddd; display: block; margin-top: 10px; }
+        .checkbox-group { margin: 15px 0; }
+        .checkbox-group label { margin-right: 15px; font-weight: bold; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #007BFF; color: white; }
     </style>
 </head>
 <body>
-<h2>Convert audio into mp3, flac, ogg and wav</h2>
+<h2>Convert audio</h2>
+
+
 <input type="file" id="audioFile" accept="audio/*">
+
+<div class="checkbox-group">
+    <p>Select codecs: </p>
+    <label><input type="checkbox" name="codec" value="mp3"> MP3</label>
+    <label><input type="checkbox" name="codec" value="flac"> FLAC</label>
+    <label><input type="checkbox" name="codec" value="ogg"> OGG (Opus)</label>
+    <label><input type="checkbox" name="codec" value="wav"> WAV</label>
+    <label><input type="checkbox" name="codec" value="aac"> AAC (.m4a)</label>
+    <label><input type="checkbox" name="codec" value="wma"> WMA (.wma)</label>
+</div>
+
 <button onclick="uploadAndConvert()">Convert</button>
-<p id="status"></p>
+<p id="status" style="font-weight: bold; color: #007BFF;"></p>
+
+<div id="tableContainer"></div>
 
 <div id="resultsContainer"></div>
 
@@ -23,15 +43,26 @@
         const status = document.getElementById('status');
         const resultsContainer = document.getElementById('resultsContainer');
 
+
         resultsContainer.innerHTML = '';
+        tableContainer.innerHTML = '';
 
         if (fileInput.files.length === 0) {
             alert('Input file');
             return;
         }
 
+        const selectedCodecs = Array.from(document.querySelectorAll('input[name="codec"]:checked'))
+            .map(cb => cb.value);
+
+        if (selectedCodecs.length === 0) {
+            alert('Select at least one codec');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
+        selectedCodecs.forEach(c => formData.append('codecs', c));
 
         status.textContent = 'Loading...';
 
@@ -49,13 +80,41 @@
 
             status.textContent = 'Finished';
 
+            let tableHTML = `
+                <h3>Codec comparison</h3>
+                <table>
+                    <tr>
+                        <th>Codec</th>
+                        <th>Size (kB)</th>
+                        <th>Length (s)</th>
+                        <th>Sample rate (Hz)</th>
+                    </tr>
+                    <tr>
+                        <td><b>Original file (${data.original.name})</b></td>
+                        <td>${data.original.size_kb} kB</td>
+                        <td>${data.original.duration.toFixed(2)} s</td>
+                        <td>${data.original.sample_rate} Hz</td>
+                    </tr>
+            `;
+
+            data.links.forEach(item => {
+                tableHTML += `
+                    <tr>
+                        <td>.${item.format.toUpperCase()}</td>
+                        <td>${item.size_kb} kB</td>
+                        <td>${item.duration.toFixed(2)} s</td>
+                        <td>${item.sample_rate} Hz</td>
+                    </tr>
+                `;
+            });
+            tableHTML += `</table>`;
+            tableContainer.innerHTML = tableHTML;
 
             data.links.forEach(item => {
                 const box = document.createElement('div');
                 box.className = 'codec-box';
 
                 const title = document.createElement('h4');
-                title.style.margin = '0 0 10px 0';
                 title.textContent = `Format: .${item.format.toUpperCase()}`;
                 box.appendChild(title);
 
@@ -63,42 +122,68 @@
                 a.href = item.url;
                 a.textContent = `Download .${item.format.toUpperCase()}`;
                 a.download = `output.${item.format}`;
-                a.style.display = 'inline-block';
+                a.style.display = 'block';
                 a.style.marginBottom = '10px';
                 box.appendChild(a);
 
                 const canvas = document.createElement('canvas');
-                canvas.width = 500;
-                canvas.height = 100;
+                canvas.width = 450;
+                canvas.height = 130;
                 box.appendChild(canvas);
 
                 resultsContainer.appendChild(box);
 
-
-                drawWaveform(canvas, item.waveform);
+                drawWaveformWithAxes(canvas, item.waveform, item.duration);
             });
 
         } catch (error) {
-            status.textContent = 'Error: ' + error.message;
+            status.textContent = 'ERROR: ' + error.message;
         }
     }
 
-    function drawWaveform(canvas, waveformPoints) {
+    function drawWaveformWithAxes(canvas, waveformPoints, duration) {
         const ctx = canvas.getContext('2d');
         const width = canvas.width;
         const height = canvas.height;
+        const padding = 25;
 
         ctx.clearRect(0, 0, width, height);
+
+        // X Y
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Y amplituda
+        ctx.moveTo(padding, 10);
+        ctx.lineTo(padding, height - padding);
+        // X time
+        ctx.lineTo(width - 10, height - padding);
+        ctx.stroke();
+
+        // popisok osi
+        ctx.fillStyle = '#555';
+        ctx.font = '10px Arial';
+        ctx.fillText('1.0', 5, 15);
+        ctx.fillText(' 0 ', 5, (height - padding) / 2 + 3);
+        ctx.fillText('-1.0', 2, height - padding);
+        ctx.fillText('0s', padding, height - 8);
+        ctx.fillText(`${duration.toFixed(1)}s`, width - 35, height - 8);
+
+        // vykreslenie
         ctx.strokeStyle = '#007BFF';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
 
-        const sliceWidth = width / waveformPoints.length;
-        let x = 0;
+        const graphWidth = width - padding - 15;
+        const graphHeight = (height - padding - 15) / 2;
+        const centerY = padding + graphHeight;
+        const sliceWidth = graphWidth / waveformPoints.length;
+
+        let x = padding;
 
         for (let i = 0; i < waveformPoints.length; i++) {
             const v = waveformPoints[i];
-            const y = (height / 2) + (v * (height / 2));
+            const y = centerY - (v * graphHeight);
 
             if (i === 0) {
                 ctx.moveTo(x, y);
@@ -112,5 +197,6 @@
         ctx.stroke();
     }
 </script>
+
 </body>
 </html>
