@@ -85,27 +85,40 @@
                 <table>
                     <tr>
                         <th>Codec</th>
+                        <th>Compression type</th>
                         <th>Size (kB)</th>
                         <th>Length (s)</th>
+                        <th>Bitrate</th>
+                        <th>Size saved %</th>
                         <th>Sample rate (Hz)</th>
                     </tr>
                     <tr>
                         <td><b>Original file (${data.original.name})</b></td>
+                        <td>TBD (add lossless/lossy reading to audio_data pre input file)</td>
                         <td>${data.original.size_kb} kB</td>
                         <td>${data.original.duration.toFixed(2)} s</td>
+                        <td>${data.original.bitrate || 'N/A'} kb/s</td>
+                        <td>Original</td>
                         <td>${data.original.sample_rate} Hz</td>
                     </tr>
             `;
 
             data.links.forEach(item => {
+                // Určenie typu na základe formátu
+                const isLossless = ['flac', 'wav'].includes(item.format);
+                const codecType = isLossless ? '<span style="color: green;">Lossless</span>' : '<span style="color: orange;">Lossy</span>';
+
                 tableHTML += `
-                    <tr>
-                        <td>.${item.format.toUpperCase()}</td>
-                        <td>${item.size_kb} kB</td>
-                        <td>${item.duration.toFixed(2)} s</td>
-                        <td>${item.sample_rate} Hz</td>
-                    </tr>
-                `;
+        <tr>
+            <td>.${item.format.toUpperCase()}</td>
+            <td>${codecType}</td>
+            <td>${item.size_kb} kB</td>
+            <td>${item.duration.toFixed(2)} s</td>
+            <td>${item.bitrate} kb/s</td>
+            <td>${item.savings_percent}%</td>
+            <td>${item.sample_rate} Hz</td>
+        </tr>
+    `;
             });
             tableHTML += `</table>`;
             tableContainer.innerHTML = tableHTML;

@@ -1,18 +1,38 @@
 import librosa
-import numpy
+import ffmpeg
 
 def audio_data(file):
-    a_data, s_rate = librosa.load(file, sr=None)
+    try:
+        y, sample_rate = librosa.load(file, sr=None)
 
-    spectogram = librosa.feature.melspectrogram(y=a_data, sr=s_rate, n_mels=128)
-    spectogram_db = librosa.power_to_db(spectogram, ref=numpy.max)
 
-    data_export= {
-        "sample_rate": int(s_rate),
-        "duration": float(librosa.get_duration(filename=file, sr=s_rate)),
-        "waveforms": a_data[::100].tolist(),
-        "spectogram": list(spectogram_db.shape),
+        duration = float(librosa.get_duration(y=y, sr=sample_rate))
+
+
+        probe = ffmpeg.probe(file)
+        format_info = probe.get('format', {})
+        bit_rate_bps = format_info.get('bit_rate', None)
+
+        if bit_rate_bps:
+            bitrate = round(int(bit_rate_bps) / 1000)
+        else:
+            bitrate = 'N/A'
+
+
+        waveforms = y[::500].tolist() if len(y) > 0 else []
+        return {
+            "duration": duration,
+            "sample_rate": int(sample_rate),
+            "bitrate": bitrate,
+            "waveforms": waveforms
+        }
+
+    except Exception as e:
+        print(f"ERROR: {e}")
+        return {
+        "duration": 0.0,
+        "sample_rate": 44100,
+        "bitrate": 'N/A',
+        "waveforms": []
     }
-
-    return data_export
 
