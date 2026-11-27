@@ -72,6 +72,13 @@
                 body: formData
             });
 
+            if (!response.ok) {
+                const errData = await response.json();
+                status.textContent = 'Upload a lossless file! ' + errData.message;
+                return;
+            }
+
+
             const data = await response.json();
 
             if (!response.ok) {
@@ -94,7 +101,7 @@
                     </tr>
                     <tr>
                         <td><b>Original file (${data.original.name})</b></td>
-                        <td>TBD (add lossless/lossy reading to audio_data pre input file)</td>
+                        <td>Lossless</td>
                         <td>${data.original.size_kb} kB</td>
                         <td>${data.original.duration.toFixed(2)} s</td>
                         <td>${data.original.bitrate || 'N/A'} kb/s</td>
@@ -104,7 +111,7 @@
             `;
 
             data.links.forEach(item => {
-                // Určenie typu na základe formátu
+
                 const isLossless = ['flac', 'wav'].includes(item.format);
                 const codecType = isLossless ? '<span style="color: green;">Lossless</span>' : '<span style="color: orange;">Lossy</span>';
 
@@ -151,6 +158,7 @@
 
         } catch (error) {
             status.textContent = 'ERROR: ' + error.message;
+            console.error("Error:", error);
         }
     }
 

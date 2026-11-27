@@ -15,8 +15,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
-    if os.path.exists("templates/webapp.html"):
-        with open("templates/webapp.html", "r", encoding="utf-8") as f:
+    if os.path.exists("templates/webapp2.html"):
+        with open("templates/webapp2.html", "r", encoding="utf-8") as f:
             return f.read()
     return "<h1>Audio codec tester</h1><p>Webapp not found</p>"
 
@@ -36,6 +36,19 @@ async def convert_audio(
         base_name = os.path.splitext(file.filename)[0]
 
         original_info = audio_data(input_path)
+
+        ext = os.path.splitext(file.filename)[1].lower()
+        lossy_extensions = ['.mp3', '.aac', '.ogg', '.wma', '.m4a']
+
+        if ext in lossy_extensions:
+            if os.path.exists(input_path):
+                os.remove(input_path)
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"Conversion rejected: file is lossy"
+            )
+
         original_size_kb = round(os.path.getsize(input_path) / 1024, 2)
         original_bitrate = original_info.get('bitrate', '1411')
 
@@ -52,7 +65,8 @@ async def convert_audio(
                 "size_kb": original_size_kb,
                 "duration": original_info["duration"],
                 "sample_rate": original_info["sample_rate"],
-                "bitrate": original_bitrate
+                "bitrate": original_bitrate,
+                "waveforms": original_info["waveforms"]
             },
             "links": download_links
         }
